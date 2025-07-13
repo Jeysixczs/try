@@ -166,33 +166,48 @@ function buildEpisodeSourcesHTML(data, modalContent) {
 
 // Show HLS player using hls.js
 function showHlsPlayer(container, hlsUrl) {
-    container.innerHTML = '';
+    container.innerHTML = '<div class="modal-loader">Loading stream...</div>';
     ensureHlsJs((err) => {
         if (err) {
             container.innerHTML = `<div style="color:#e74c3c;">Failed to load HLS.js: ${err.message}</div>`;
             return;
         }
-        const video = document.createElement('video');
-        video.controls = true;
-        video.autoplay = true;
-        video.style = "width:100%;max-width:600px;background:#000;border-radius:6px;margin-top:10px;";
-        container.appendChild(video);
+        // Optional: Fetch manifest to check for errors before playback
+        fetch(hlsUrl)
+            .then(res => {
+                if (!res.ok) throw new Error("Stream manifest could not be loaded (check proxy and source)");
+                return res.text();
+            })
+            .then(text => {
+                if (!text.startsWith("#EXTM3U")) {
+                    throw new Error("Invalid HLS manifest received (proxy or source issue)");
+                }
+                container.innerHTML = ''; // Ready to show video
+                const video = document.createElement('video');
+                video.controls = true;
+                video.autoplay = true;
+                video.style = "width:100%;max-width:600px;background:#000;border-radius:6px;margin-top:10px;";
+                container.appendChild(video);
 
-        if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            video.src = hlsUrl;
-            video.play().catch(e => {
-                container.innerHTML += `<div style="color:#e74c3c;">Failed to start playback: ${e.message}</div>`;
+                if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                    video.src = hlsUrl;
+                    video.play().catch(e => {
+                        container.innerHTML += `<div style="color:#e74c3c;">Failed to start playback: ${e.message}</div>`;
+                    });
+                } else if (window.Hls) {
+                    const hls = new window.Hls();
+                    hls.loadSource(hlsUrl);
+                    hls.attachMedia(video);
+                    hls.on(window.Hls.Events.ERROR, function(event, data) {
+                        let msg = data.details || data.type || "Unknown error";
+                        container.innerHTML += `<div style="color:#e74c3c;">${msg}</div>`;
+                    });
+                } else {
+                    container.innerHTML += `<div style="color:#e74c3c;">HLS playback not supported. Please use Safari or install hls.js.</div>`;
+                }
+            })
+            .catch(err => {
+                container.innerHTML = `<div style="color:#e74c3c;">${err.message}</div>`;
             });
-        } else if (window.Hls) {
-            const hls = new window.Hls();
-            hls.loadSource(hlsUrl);
-            hls.attachMedia(video);
-            hls.on(window.Hls.Events.ERROR, function(event, data) {
-                let msg = data.details || data.type || "Unknown error";
-                container.innerHTML += `<div style="color:#e74c3c;">${msg}</div>`;
-            });
-        } else {
-            container.innerHTML += `<div style="color:#e74c3c;">HLS playback not supported. Please use Safari or install hls.js.</div>`;
-        }
     });
 }
