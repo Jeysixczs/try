@@ -1,8 +1,5 @@
-import { PROXIES } from "../api/anime.js";
-
-// Your Vercel serverless proxy for Referer
+// Change this to your actual proxy endpoint
 function getProxiedUrl(url, referer) {
-    // CHANGE THIS to your deployed Vercel endpoint (e.g. https://your-vercel-app.vercel.app/api/proxy)
     return `https://animenicarlo.vercel.app/api/proxy?url=${encodeURIComponent(url)}&referer=${encodeURIComponent(referer)}`;
 }
 
@@ -16,32 +13,17 @@ function ensureHlsJs(callback) {
     document.head.appendChild(script);
 }
 
-export function showAnimeEpisodeSourcesModal(animeEpisodeId, server = "hd-1", category = "sub") {
-    if (!animeEpisodeId) return;
+// Main function to show sources modal
+export function showAnimeEpisodeSourcesModal(data) {
+    if (!data || !data.sources || !Array.isArray(data.sources)) {
+        alert("No sources found for this episode.");
+        return;
+    }
+
     const modal = buildEpisodeSourcesModal();
     document.body.appendChild(modal);
     const modalContent = modal.querySelector('.anime-episode-sources-modal-content');
-    modalContent.innerHTML = `<div class="modal-loader">Loading sources...</div>`;
-    const proxy = PROXIES[0];
-    const EpisodeSourcesUrl = proxy.getApiUrl(
-        "https://animeapi-hazel-ten.vercel.app/api/v2/hianime/episode/sources?animeEpisodeId=" +
-        encodeURIComponent(animeEpisodeId) +
-        "&server=" + encodeURIComponent(server) +
-        "&category=" + encodeURIComponent(category)
-    );
-
-    fetch(EpisodeSourcesUrl)
-        .then(res => {
-            if (!res.ok) throw new Error("Failed to fetch episode sources");
-            return res.json();
-        })
-        .then(data => {
-            console.log("Sources API response:", data);
-            modalContent.innerHTML = buildEpisodeSourcesHTML(data, modalContent);
-        })
-        .catch(err => {
-            modalContent.innerHTML = `<div class="modal-loader">Error loading sources: ${err?.message || err}</div>`;
-        });
+    modalContent.innerHTML = buildEpisodeSourcesHTML(data, modalContent);
 
     setTimeout(() => {
         const closeBtn = modal.querySelector('.anime-episode-sources-modal-close');
@@ -72,10 +54,7 @@ function buildEpisodeSourcesModal() {
 }
 
 function buildEpisodeSourcesHTML(data, modalContent) {
-    if (!data || (typeof data.status !== "undefined" && data.status !== 200) || !data.data) {
-        return `<div class="modal-loader">${data?.error || "No sources info found."}</div>`;
-    }
-    const { sources, subtitles, headers, anilistID, malID } = data.data;
+    const { sources, tracks, headers, anilistID, malID } = data;
 
     let sourcesHTML = '';
     if (Array.isArray(sources) && sources.length) {
@@ -84,7 +63,6 @@ function buildEpisodeSourcesHTML(data, modalContent) {
                 <h3>Streaming Sources</h3>
                 <ul style="list-style:none;padding:0;">
                     ${sources.map((src, i) => {
-                        // For Referer-protected sources, use the proxy
                         let hlsUrl = src.url;
                         let refererNeeded = !!headers?.Referer;
                         if (src.isM3U8 && refererNeeded) {
@@ -92,7 +70,7 @@ function buildEpisodeSourcesHTML(data, modalContent) {
                         }
                         return `
                         <li style="margin-bottom:8px;">
-                            <span style="font-weight:bold;">${src.quality || "Default"}</span>
+                            <span style="font-weight:bold;">${src.type?.toUpperCase() || "Default"}</span>
                             <span style="color:#888;font-size:12px;">${src.isM3U8 ? "HLS/M3U8" : ""}</span>
                             ${src.isM3U8
                                 ? `<button class="hls-play-btn" data-url="${hlsUrl}" data-index="${i}" style="margin-left:8px;">Play</button>`
@@ -109,16 +87,16 @@ function buildEpisodeSourcesHTML(data, modalContent) {
         sourcesHTML = `<div>No streaming sources found.</div>`;
     }
 
-    let subtitlesHTML = '';
-    if (Array.isArray(subtitles) && subtitles.length) {
-        subtitlesHTML = `
+    let tracksHTML = '';
+    if (Array.isArray(tracks) && tracks.length) {
+        tracksHTML = `
             <div>
-                <h3>Subtitles</h3>
+                <h3>Subtitles & Tracks</h3>
                 <ul style="list-style:none;padding:0;">
-                    ${subtitles.map(sub => `
+                    ${tracks.map(track => `
                         <li style="margin-bottom:8px;">
-                            <span style="font-weight:bold;">${sub.lang}:</span>
-                            <a href="${sub.url}" target="_blank" rel="noopener">Download</a>
+                            <span style="font-weight:bold;">${track.lang}:</span>
+                            <a href="${track.url}" target="_blank" rel="noopener">Download</a>
                         </li>
                     `).join("")}
                 </ul>
@@ -142,7 +120,6 @@ function buildEpisodeSourcesHTML(data, modalContent) {
         </details>`;
     }
 
-    // Attach HLS play logic after rendering
     setTimeout(() => {
         Array.from(modalContent.querySelectorAll('.hls-play-btn')).forEach(btn => {
             btn.onclick = function () {
@@ -158,13 +135,13 @@ function buildEpisodeSourcesHTML(data, modalContent) {
         <div>
             ${metaHTML}
             ${sourcesHTML}
-            ${subtitlesHTML}
+            ${tracksHTML}
             ${headersHTML}
         </div>
     `;
 }
 
-// Show HLS player using hls.js
+// Show HLS player using hls.js and validate manifest
 function showHlsPlayer(container, hlsUrl) {
     container.innerHTML = '<div class="modal-loader">Loading stream...</div>';
     ensureHlsJs((err) => {
@@ -172,7 +149,7 @@ function showHlsPlayer(container, hlsUrl) {
             container.innerHTML = `<div style="color:#e74c3c;">Failed to load HLS.js: ${err.message}</div>`;
             return;
         }
-        // Optional: Fetch manifest to check for errors before playback
+        // Validate manifest before playback
         fetch(hlsUrl)
             .then(res => {
                 if (!res.ok) throw new Error("Stream manifest could not be loaded (check proxy and source)");
@@ -182,7 +159,7 @@ function showHlsPlayer(container, hlsUrl) {
                 if (!text.startsWith("#EXTM3U")) {
                     throw new Error("Invalid HLS manifest received (proxy or source issue)");
                 }
-                container.innerHTML = ''; // Ready to show video
+                container.innerHTML = '';
                 const video = document.createElement('video');
                 video.controls = true;
                 video.autoplay = true;
