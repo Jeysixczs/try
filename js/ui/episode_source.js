@@ -17,9 +17,6 @@ function ensureHlsJs(callback) {
     document.head.appendChild(script);
 }
 
-// ===============
-// Server Selection Modal
-// ===============
 export function showAnimeEpisodeServersModal(data) {
     if (!data || (!Array.isArray(data.sub) && !Array.isArray(data.dub))) {
         alert("No server list found for this episode.");

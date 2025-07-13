@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchAnimeContent();
 });
 
-import { showAnimeEpisodeSourcesModal } from './ui/episode_sources.js';
+import { showAnimeEpisodeSourcesModal } from './ui/episode_source.js';
 
 document.getElementById('some-button').addEventListener('click', async () => {
   // Fetch the episode sources (replace URL with your API endpoint)
