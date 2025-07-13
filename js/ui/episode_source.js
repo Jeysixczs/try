@@ -1,3 +1,7 @@
+// ====================
+// Episode Sources Modal & HLS Player Logic
+// ====================
+
 // Change this to your actual proxy endpoint
 function getProxiedUrl(url, referer) {
     return `https://animenicarlo.vercel.app/api/proxy?url=${encodeURIComponent(url)}&referer=${encodeURIComponent(referer)}`;
@@ -13,7 +17,75 @@ function ensureHlsJs(callback) {
     document.head.appendChild(script);
 }
 
-// Main function to show sources modal
+// ===============
+// Server Selection Modal
+// ===============
+export function showAnimeEpisodeServersModal(data) {
+    if (!data || (!Array.isArray(data.sub) && !Array.isArray(data.dub))) {
+        alert("No server list found for this episode.");
+        return;
+    }
+
+    const modal = document.createElement('div');
+    modal.className = "anime-modal";
+    modal.innerHTML = `
+      <div class="anime-episode-servers-modal-content" tabindex="0">
+        <h3>Select a Server</h3>
+        <ul style="list-style:none;padding:0;">
+          ${(data.sub || []).map(server => `
+            <li>
+              <button class="server-btn" data-server="${server.serverName}" data-category="sub" data-episodeid="${data.episodeId}" style="margin-bottom:8px;">
+                SUB - ${server.serverName}
+              </button>
+            </li>
+          `).join("")}
+          ${(data.dub || []).map(server => `
+            <li>
+              <button class="server-btn" data-server="${server.serverName}" data-category="dub" data-episodeid="${data.episodeId}" style="margin-bottom:8px;">
+                DUB - ${server.serverName}
+              </button>
+            </li>
+          `).join("")}
+        </ul>
+      </div>
+      <button class="anime-episode-servers-modal-close" aria-label="Close">&times;</button>
+    `;
+    modal.querySelector('.anime-episode-servers-modal-close').onclick = () => modal.remove();
+    modal.onclick = e => { if (e.target === modal) modal.remove(); };
+    document.body.appendChild(modal);
+
+    setTimeout(() => {
+        const closeBtn = modal.querySelector('.anime-episode-servers-modal-close');
+        if (closeBtn) closeBtn.focus();
+    }, 150);
+
+    modal.querySelectorAll('.server-btn').forEach(btn => {
+        btn.onclick = async function () {
+            modal.remove();
+            const server = btn.getAttribute('data-server');
+            const category = btn.getAttribute('data-category');
+            const episodeId = btn.getAttribute('data-episodeid');
+            // Now fetch sources for this server
+            try {
+                // Example endpoint: update to your real API
+                const sourcesRes = await fetch(`/api/episode-sources?episodeId=${encodeURIComponent(episodeId)}&server=${encodeURIComponent(server)}&category=${encodeURIComponent(category)}`);
+                if (!sourcesRes.ok) throw new Error("Failed to fetch sources for server");
+                const sourcesJson = await sourcesRes.json();
+                if (sourcesJson.data && sourcesJson.data.sources) {
+                    showAnimeEpisodeSourcesModal(sourcesJson.data);
+                } else {
+                    alert("No sources found for the selected server.");
+                }
+            } catch (err) {
+                alert("Error loading sources: " + err.message);
+            }
+        };
+    });
+}
+
+// ===============
+// Sources Modal
+// ===============
 export function showAnimeEpisodeSourcesModal(data) {
     if (!data || !data.sources || !Array.isArray(data.sources)) {
         alert("No sources found for this episode.");
@@ -141,7 +213,9 @@ function buildEpisodeSourcesHTML(data, modalContent) {
     `;
 }
 
-// Show HLS player using hls.js and validate manifest
+// ===============
+// HLS Player
+// ===============
 function showHlsPlayer(container, hlsUrl) {
     container.innerHTML = '<div class="modal-loader">Loading stream...</div>';
     ensureHlsJs((err) => {
