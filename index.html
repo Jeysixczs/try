@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Anime Display</title>
+    <style>
+        .anime-item {
+            display: inline-block;
+            margin: 10px;
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            width: 180px;
+            vertical-align: top;
+            text-align: center;
+            background: #fafafa;
+        }
+
+        .anime-item img {
+            border-radius: 4px;
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Top Airing Anime</h1>
+    <div id="TopAiringAnime"></div>
+    <h1>Spotlight</h1>
+    <div id="Spotlight"></div>
+    <h1>Latest Complete Anime</h1>
+    <div id="LatestComplete"></div>
+    <h1>Latest Episode</h1>
+    <div id="LatestEpisode"></div>
+    <h1>Top Upcoming Anime</h1>
+    <div id="Upcoming"></div>
+    <h1>TrendingAnime</h1>
+    <div id="TrendingAnime"></div>
+    <h1>Most Favorite</h1>
+    <div id="FavoriteAnime"></div>
+    <h1>Most Popular</h1>
+    <div id="PopularAnime"></div>
+
+    <div id="anime-modal-content"></div>
+    <div id="anime-episode-servers-modal-content"></div>
+    <div id="anime-episode-sources-modal-content"></div>
+   <script type="module" src="script.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</body>
+
+</html>

@@ -1,0 +1,16 @@
+.anime-item {
+  display: inline-block;
+  margin: 10px;
+  padding: 10px;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  width: 180px;
+  vertical-align: top;
+  text-align: center;
+  background: #fafafa;
+}
+.anime-item img {
+  border-radius: 4px;
+  max-width: 100%;
+  height: auto;
+}
