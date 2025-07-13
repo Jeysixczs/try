@@ -3,7 +3,7 @@ import { PROXIES } from "../api/anime.js";
 // Your Vercel serverless proxy for Referer
 function getProxiedUrl(url, referer) {
     // CHANGE THIS to your deployed Vercel endpoint (e.g. https://your-vercel-app.vercel.app/api/proxy)
-    return `https://animeapi-hazel-ten.vercel.app/api/proxy?url=${encodeURIComponent(url)}&referer=${encodeURIComponent(referer)}`;
+    return `https://animenicarlo.vercel.app/api/proxy?url=${encodeURIComponent(url)}&referer=${encodeURIComponent(referer)}`;
 }
 
 // Dynamically load hls.js if not present
